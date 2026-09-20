@@ -8,16 +8,22 @@ import { Scale, ShieldCheck, CheckCircle2, FileSearch, ArrowRight, Loader2 } fro
 
 interface SignInViewProps {
   onSignIn: () => Promise<void>;
+  onContinueAsGuest: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
 }
 
-export const SignInView: React.FC<SignInViewProps> = ({ onSignIn, isLoading, error }) => {
+export const SignInView: React.FC<SignInViewProps> = ({
+  onSignIn,
+  onContinueAsGuest,
+  isLoading,
+  error
+}) => {
   return (
     <div className="min-h-screen flex flex-col justify-center items-center px-4 bg-slate-950 text-slate-100">
-      <div className="max-w-md w-full space-y-8 bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl">
+      <div className="max-w-md w-full space-y-6 bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl">
         {/* Brand Header */}
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-2">
           <div className="inline-flex w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 items-center justify-center text-white shadow-lg shadow-indigo-500/20">
             <Scale className="w-7 h-7" />
           </div>
@@ -33,10 +39,10 @@ export const SignInView: React.FC<SignInViewProps> = ({ onSignIn, isLoading, err
         </div>
 
         {/* Feature Highlights */}
-        <div className="space-y-2.5 pt-2">
+        <div className="space-y-2.5 pt-1">
           <div className="flex items-start space-x-2.5 text-xs text-slate-300">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-            <span><strong>Zero-Trust Cloud Isolation:</strong> All documents, summaries, and analyses are securely persisted in Firestore partitioned by your verified Firebase UID.</span>
+            <span><strong>Zero-Trust Cloud Isolation:</strong> All documents, summaries, and analyses are securely partitioned per user.</span>
           </div>
           <div className="flex items-start space-x-2.5 text-xs text-slate-300">
             <ShieldCheck className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
@@ -50,13 +56,13 @@ export const SignInView: React.FC<SignInViewProps> = ({ onSignIn, isLoading, err
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-center">
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs text-center leading-relaxed">
             {error}
           </div>
         )}
 
-        {/* Action Button */}
-        <div className="pt-2">
+        {/* Action Buttons */}
+        <div className="space-y-3 pt-2">
           <button
             id="btn-google-signin"
             onClick={onSignIn}
@@ -66,7 +72,7 @@ export const SignInView: React.FC<SignInViewProps> = ({ onSignIn, isLoading, err
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-slate-700" />
-                <span>Authenticating with Google...</span>
+                <span>Connecting...</span>
               </>
             ) : (
               <>
@@ -94,11 +100,27 @@ export const SignInView: React.FC<SignInViewProps> = ({ onSignIn, isLoading, err
               </>
             )}
           </button>
+
+          <div className="relative flex py-1 items-center">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="flex-shrink mx-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">or explore instantly</span>
+            <div className="flex-grow border-t border-slate-800"></div>
+          </div>
+
+          <button
+            id="btn-explore-demo"
+            onClick={onContinueAsGuest}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.99] border border-slate-700 text-slate-200 font-semibold text-sm transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <span>Explore Interactive Demo / Guest Workspace</span>
+            <ArrowRight className="w-4 h-4 text-indigo-400" />
+          </button>
         </div>
 
         {/* Safety Disclaimer Notice */}
         <p className="text-[11px] text-slate-500 text-center leading-normal">
-          LexiGuide is an informational and document preparation workspace, not a law firm, and does not provide formal legal advice. By signing in, your data remains strictly isolated in your personal account.
+          LexiGuide is an informational and document preparation workspace, not a law firm, and does not provide formal legal advice.
         </p>
       </div>
     </div>

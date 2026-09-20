@@ -225,4 +225,5 @@ export interface UserSession {
   email: string;
   displayName: string;
   photoURL?: string;
+  isDemo?: boolean;
 }

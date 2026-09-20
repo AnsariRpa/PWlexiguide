@@ -29,7 +29,14 @@ import {
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export function App() {
-  const { user, isLoading: isAuthLoading, signInWithGoogle, signOut, error: authError } = useAuth();
+  const {
+    user,
+    isLoading: isAuthLoading,
+    signInWithGoogle,
+    continueAsGuest,
+    signOut,
+    error: authError
+  } = useAuth();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('workspace');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -254,6 +261,7 @@ export function App() {
     return (
       <SignInView
         onSignIn={signInWithGoogle}
+        onContinueAsGuest={continueAsGuest}
         isLoading={isAuthLoading}
         error={authError}
       />

@@ -18,7 +18,7 @@ import {
   generateActionableOutputsWithGemini
 } from "./server/geminiService";
 import { DocumentItem } from "./src/types";
-import { requireAuth, AuthenticatedRequest } from "./server/authMiddleware";
+import { requireAuth, AuthenticatedRequest, createDemoToken } from "./server/authMiddleware";
 
 dotenv.config();
 
@@ -42,6 +42,24 @@ async function startServer() {
       authModel: "firebase_id_token",
       persistence: "firestore",
       timestamp: new Date().toISOString()
+    });
+  });
+
+  // Demo session issuance for immediate interactive evaluation (public)
+  app.post("/api/auth/demo-session", (_req: Request, res: Response) => {
+    const demoId = `demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const displayName = "Guest Reviewer";
+    const token = createDemoToken(demoId, displayName);
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        uid: demoId,
+        displayName,
+        email: `${demoId}@lexiguide.local`,
+        isDemo: true
+      }
     });
   });
 
