@@ -13,27 +13,30 @@ import {
 } from '../types';
 
 export class LexiGuideApi {
-  private static userId = 'user_demo_1';
+  private static tokenGetter: (() => Promise<string | null>) | null = null;
 
-  public static setUserId(id: string) {
-    this.userId = id;
+  public static setTokenGetter(getter: () => Promise<string | null>) {
+    this.tokenGetter = getter;
   }
 
-  public static getUserId(): string {
-    return this.userId;
-  }
-
-  private static getHeaders(): HeadersInit {
-    return {
-      'Content-Type': 'application/json',
-      'x-user-id': this.userId
+  private static async getHeaders(): Promise<HeadersInit> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
     };
+
+    if (this.tokenGetter) {
+      const token = await this.tokenGetter();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+
+    return headers;
   }
 
   public static async fetchDocuments(): Promise<DocumentItem[]> {
-    const res = await fetch(`/api/documents`, {
-      headers: this.getHeaders()
-    });
+    const headers = await this.getHeaders();
+    const res = await fetch(`/api/documents`, { headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to fetch documents');
     return data.documents || [];
@@ -46,9 +49,10 @@ export class LexiGuideApi {
     rawText?: string;
     base64Data?: string;
   }): Promise<DocumentItem> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/documents/upload`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify(payload)
     });
     const data = await res.json();
@@ -57,9 +61,10 @@ export class LexiGuideApi {
   }
 
   public static async loadSampleBundle(bundleId: string): Promise<DocumentItem[]> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/documents/sample-bundle`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify({ bundleId })
     });
     const data = await res.json();
@@ -68,27 +73,30 @@ export class LexiGuideApi {
   }
 
   public static async deleteDocument(id: string): Promise<void> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/documents/${id}`, {
       method: 'DELETE',
-      headers: this.getHeaders()
+      headers
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to delete document');
   }
 
   public static async clearAllDocuments(): Promise<void> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/documents/clear`, {
       method: 'POST',
-      headers: this.getHeaders()
+      headers
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to clear documents');
   }
 
   public static async analyzeDocument(documentId: string): Promise<DocumentUnderstandingSummary> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/ai/analyze-document`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify({ documentId })
     });
     const data = await res.json();
@@ -100,9 +108,10 @@ export class LexiGuideApi {
     concernPrompt: string,
     documentIds?: string[]
   ): Promise<PersonalizedRelevanceMap> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/ai/personalized-relevance`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify({ concernPrompt, documentIds })
     });
     const data = await res.json();
@@ -116,9 +125,10 @@ export class LexiGuideApi {
     documentIds?: string[],
     allowSearchGrounding?: boolean
   ): Promise<EvidenceBackedAnswer> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/ai/ask`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify({
         question,
         userConcernContext,
@@ -135,9 +145,10 @@ export class LexiGuideApi {
     doc1Id: string,
     doc2Id: string
   ): Promise<DocumentComparisonResult> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/ai/compare`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify({ doc1Id, doc2Id })
     });
     const data = await res.json();
@@ -149,9 +160,10 @@ export class LexiGuideApi {
     userConcern?: string,
     documentIds?: string[]
   ): Promise<ActionableOutputs> {
+    const headers = await this.getHeaders();
     const res = await fetch(`/api/ai/actionable-outputs`, {
       method: 'POST',
-      headers: this.getHeaders(),
+      headers,
       body: JSON.stringify({ userConcern, documentIds })
     });
     const data = await res.json();

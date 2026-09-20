@@ -15,6 +15,8 @@ import { PrepareAndExportView } from './components/PrepareAndExportView';
 import { EvidenceInspectorModal } from './components/EvidenceInspectorModal';
 import { UploadModal } from './components/UploadModal';
 import { WhyLexiGuideCard } from './components/WhyLexiGuideCard';
+import { SignInView } from './components/SignInView';
+import { useAuth } from './context/AuthContext';
 import { LexiGuideApi } from './services/api';
 import {
   DocumentItem,
@@ -22,19 +24,14 @@ import {
   EvidenceBackedAnswer,
   DocumentComparisonResult,
   ActionableOutputs,
-  UserSession,
   DocumentCategory
 } from './types';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('workspace');
-  const [currentUser, setCurrentUser] = useState<UserSession>({
-    uid: 'user_alex_morgan',
-    displayName: 'Alex Morgan',
-    email: 'ansariprototype@gmail.com'
-  });
+  const { user, isLoading: isAuthLoading, signInWithGoogle, signOut, error: authError } = useAuth();
 
+  const [activeTab, setActiveTab] = useState<ActiveTab>('workspace');
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
 
@@ -71,22 +68,31 @@ export function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Initial load
+  // Load documents whenever the authenticated user state changes
   useEffect(() => {
-    LexiGuideApi.setUserId(currentUser.uid);
-    loadDocuments(true);
-  }, [currentUser.uid]);
+    if (user) {
+      loadDocuments(true);
+    } else {
+      setDocuments([]);
+      setActiveDocumentId(null);
+      setRelevanceMap(null);
+      setAnswers([]);
+      setComparison(null);
+      setActionableOutputs(null);
+    }
+  }, [user?.uid]);
 
   const loadDocuments = async (loadSampleIfEmpty = false) => {
+    if (!user) return;
     setIsLoadingDocs(true);
     try {
       let docs = await LexiGuideApi.fetchDocuments();
       if (docs.length === 0 && loadSampleIfEmpty) {
-        // Automatically bootstrap sample bundle for instant rich exploration
+        // Automatically bootstrap sample bundle for instant exploration in the user's isolated store
         docs = await LexiGuideApi.loadSampleBundle('bundle-employment-equity');
       }
       setDocuments(docs);
-      if (docs.length > 0 && !activeDocumentId) {
+      if (docs.length > 0) {
         setActiveDocumentId(docs[0].id);
       }
     } catch (err: any) {
@@ -95,21 +101,6 @@ export function App() {
     } finally {
       setIsLoadingDocs(false);
     }
-  };
-
-  const handleSwitchUser = () => {
-    const nextUser: UserSession = currentUser.uid === 'user_alex_morgan'
-      ? { uid: 'user_jordan_lee', displayName: 'Jordan Lee (Counsel)', email: 'jordan.legal@enterprise.com' }
-      : { uid: 'user_alex_morgan', displayName: 'Alex Morgan', email: 'ansariprototype@gmail.com' };
-
-    setCurrentUser(nextUser);
-    LexiGuideApi.setUserId(nextUser.uid);
-    setActiveDocumentId(null);
-    setRelevanceMap(null);
-    setAnswers([]);
-    setComparison(null);
-    setActionableOutputs(null);
-    showToast(`Switched workspace to ${nextUser.displayName}`);
   };
 
   const handleLoadSampleBundle = async (bundleId: string) => {
@@ -125,7 +116,7 @@ export function App() {
       setAnswers([]);
       setComparison(null);
       setActionableOutputs(null);
-      showToast("Loaded sample legal document bundle");
+      showToast("Loaded sample legal document bundle into your workspace");
     } catch (err: any) {
       showToast(err.message || "Failed to load bundle", 'error');
     } finally {
@@ -248,6 +239,28 @@ export function App() {
     });
   };
 
+  // 1. Initial auth state loading screen
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex flex-col justify-center items-center bg-slate-950 text-slate-100">
+        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
+        <p className="text-xs text-slate-400 font-medium">Verifying Firebase Authentication...</p>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated user: Show clean Sign-In screen
+  if (!user) {
+    return (
+      <SignInView
+        onSignIn={signInWithGoogle}
+        isLoading={isAuthLoading}
+        error={authError}
+      />
+    );
+  }
+
+  // 3. Authenticated user: Full LexiGuide Workspace
   const activeDoc = documents.find(d => d.id === activeDocumentId) || (documents.length > 0 ? documents[0] : null);
 
   return (
@@ -257,8 +270,8 @@ export function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onOpenUpload={() => setIsUploadOpen(true)}
-        currentUser={currentUser}
-        onSwitchUser={handleSwitchUser}
+        currentUser={user}
+        onSignOut={signOut}
         documentCount={documents.length}
       />
 

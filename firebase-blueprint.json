@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with isolation metadata",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "User's legal document with chunks, metadata, and optional summary",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "fileType": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "totalPages": { "type": "number" },
+        "rawText": { "type": "string" },
+        "chunks": { "type": "array" },
+        "summary": { "type": "object" }
+      },
+      "required": ["id", "userId", "title", "category", "fileType", "createdAt", "rawText", "chunks"]
+    },
+    "RelevanceMap": {
+      "title": "RelevanceMap",
+      "description": "User's personalized relevance analysis",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "concernSummary": { "type": "string" },
+        "relevantItems": { "type": "array" },
+        "informationGaps": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "concernSummary", "relevantItems", "informationGaps"]
+    },
+    "Answer": {
+      "title": "Answer",
+      "description": "Evidence-backed answer generated for the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" },
+        "whatDocumentSays": { "type": "string" },
+        "citations": { "type": "array" },
+        "whatThisMeansForYou": { "type": "string" },
+        "whatIsUnclear": { "type": "string" },
+        "gapClassification": { "type": "string" },
+        "whatYouMayWantToAsk": { "type": "array" },
+        "externalContext": { "type": "object" },
+        "claimVerification": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "question", "answer", "citations", "createdAt"]
+    },
+    "Comparison": {
+      "title": "Comparison",
+      "description": "Comparative analysis between two documents",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "doc1Id": { "type": "string" },
+        "doc1Name": { "type": "string" },
+        "doc2Id": { "type": "string" },
+        "doc2Name": { "type": "string" },
+        "summaryOfDifferences": { "type": "string" },
+        "changes": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "doc1Id", "doc2Id", "summaryOfDifferences", "changes"]
+    },
+    "ActionableOutputs": {
+      "title": "ActionableOutputs",
+      "description": "Consultation brief, checklist, and questions matrix",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "consultationBrief": { "type": "object" },
+        "actionChecklist": { "type": "array" },
+        "questionsToAsk": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "consultationBrief", "actionChecklist", "questionsToAsk"]
+    }
+  },
+  "firestore": {
+    "users/{uid}": {
+      "schema": "User",
+      "description": "User profile with isolated subcollections"
+    },
+    "users/{uid}/documents/{documentId}": {
+      "schema": "Document",
+      "description": "User documents and chunked evidence"
+    },
+    "users/{uid}/relevanceMap/current": {
+      "schema": "RelevanceMap",
+      "description": "Current personalized relevance map"
+    },
+    "users/{uid}/answers/{answerId}": {
+      "schema": "Answer",
+      "description": "Evidence-backed Q&A responses"
+    },
+    "users/{uid}/comparison/current": {
+      "schema": "Comparison",
+      "description": "Latest document comparison result"
+    },
+    "users/{uid}/actionableOutputs/current": {
+      "schema": "ActionableOutputs",
+      "description": "Latest consultation brief and action pack"
+    }
+  }
+}

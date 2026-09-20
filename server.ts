@@ -18,16 +18,11 @@ import {
   generateActionableOutputsWithGemini
 } from "./server/geminiService";
 import { DocumentItem } from "./src/types";
+import { requireAuth, AuthenticatedRequest } from "./server/authMiddleware";
 
 dotenv.config();
 
 const PORT = 3000;
-
-function getUserId(req: Request): string {
-  const headerUserId = req.headers["x-user-id"] as string;
-  const queryUserId = req.query.userId as string;
-  return headerUserId || queryUserId || "user_demo_1";
-}
 
 async function startServer() {
   const app = express();
@@ -36,33 +31,39 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-  // --- API Routes ---
+  // --- Public API Routes ---
 
-  // Health check
+  // Health check (public)
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({
       status: "ok",
       service: "LexiGuide API",
       geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+      authModel: "firebase_id_token",
+      persistence: "firestore",
       timestamp: new Date().toISOString()
     });
   });
 
+  // --- Protected API Routes (Requires verified Firebase ID Token) ---
+  // Every route below strictly uses req.user!.uid verified by Firebase Admin SDK.
+
   // Get user documents
-  app.get("/api/documents", (req: Request, res: Response) => {
+  app.get("/api/documents", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
-      const docs = docStore.getDocuments(userId);
+      const userId = req.user!.uid;
+      const docs = await docStore.getDocuments(userId);
       res.json({ success: true, documents: docs });
     } catch (err: any) {
+      console.error("Fetch documents error:", err);
       res.status(500).json({ error: err.message || "Failed to fetch documents" });
     }
   });
 
   // Upload a document (supports raw text or base64 PDF)
-  app.post("/api/documents/upload", async (req: Request, res: Response) => {
+  app.post("/api/documents/upload", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { title, category, fileType, rawText, base64Data } = req.body;
 
       if (!title) {
@@ -99,7 +100,7 @@ async function startServer() {
         chunks
       };
 
-      docStore.addDocument(userId, docItem);
+      await docStore.addDocument(userId, docItem);
 
       res.json({ success: true, document: docItem });
     } catch (err: any) {
@@ -108,48 +109,51 @@ async function startServer() {
     }
   });
 
-  // Load sample document bundle
-  app.post("/api/documents/sample-bundle", (req: Request, res: Response) => {
+  // Load sample document bundle into user's isolated Firestore collection
+  app.post("/api/documents/sample-bundle", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { bundleId } = req.body;
-      const loaded = docStore.loadSampleBundleForUser(userId, bundleId || "bundle-employment-equity");
+      const loaded = await docStore.loadSampleBundleForUser(userId, bundleId || "bundle-employment-equity");
       res.json({ success: true, documents: loaded });
     } catch (err: any) {
+      console.error("Sample bundle error:", err);
       res.status(500).json({ error: err.message || "Failed to load sample bundle" });
     }
   });
 
   // Delete a document
-  app.delete("/api/documents/:id", (req: Request, res: Response) => {
+  app.delete("/api/documents/:id", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { id } = req.params;
-      const success = docStore.deleteDocument(userId, id);
+      const success = await docStore.deleteDocument(userId, id);
       res.json({ success });
     } catch (err: any) {
+      console.error("Delete document error:", err);
       res.status(500).json({ error: err.message || "Failed to delete document" });
     }
   });
 
-  // Clear all documents
-  app.post("/api/documents/clear", (req: Request, res: Response) => {
+  // Clear all documents for authenticated user
+  app.post("/api/documents/clear", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
-      docStore.clearDocuments(userId);
+      const userId = req.user!.uid;
+      await docStore.clearDocuments(userId);
       res.json({ success: true });
     } catch (err: any) {
+      console.error("Clear documents error:", err);
       res.status(500).json({ error: err.message || "Failed to clear documents" });
     }
   });
 
   // 1. Analyze Document Understanding
-  app.post("/api/ai/analyze-document", async (req: Request, res: Response) => {
+  app.post("/api/ai/analyze-document", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { documentId } = req.body;
 
-      const doc = docStore.getDocument(userId, documentId);
+      const doc = await docStore.getDocument(userId, documentId);
       if (!doc) {
         return res.status(404).json({ error: "Document not found" });
       }
@@ -159,7 +163,7 @@ async function startServer() {
       }
 
       const summary = await analyzeDocumentWithGemini(doc.title, doc.chunks);
-      docStore.updateDocumentSummary(userId, documentId, summary);
+      await docStore.updateDocumentSummary(userId, documentId, summary);
 
       res.json({ success: true, summary });
     } catch (err: any) {
@@ -169,16 +173,16 @@ async function startServer() {
   });
 
   // 2. Analyze Personalized Relevance ("What Matters To You")
-  app.post("/api/ai/personalized-relevance", async (req: Request, res: Response) => {
+  app.post("/api/ai/personalized-relevance", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { concernPrompt, documentIds } = req.body;
 
       if (!concernPrompt || !concernPrompt.trim()) {
         return res.status(400).json({ error: "Concern prompt is required" });
       }
 
-      const allDocs = docStore.getDocuments(userId);
+      const allDocs = await docStore.getDocuments(userId);
       const targetDocs = documentIds && documentIds.length > 0
         ? allDocs.filter(d => documentIds.includes(d.id))
         : allDocs;
@@ -188,7 +192,7 @@ async function startServer() {
       }
 
       const relevanceMap = await analyzePersonalizedRelevance(concernPrompt, targetDocs);
-      docStore.setRelevanceMap(userId, relevanceMap);
+      await docStore.setRelevanceMap(userId, relevanceMap);
 
       res.json({ success: true, relevanceMap });
     } catch (err: any) {
@@ -198,16 +202,16 @@ async function startServer() {
   });
 
   // 3. Ask Evidence-Backed Question
-  app.post("/api/ai/ask", async (req: Request, res: Response) => {
+  app.post("/api/ai/ask", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { question, userConcernContext, documentIds, allowSearchGrounding } = req.body;
 
       if (!question || !question.trim()) {
         return res.status(400).json({ error: "Question is required" });
       }
 
-      const allDocs = docStore.getDocuments(userId);
+      const allDocs = await docStore.getDocuments(userId);
       const targetDocs = documentIds && documentIds.length > 0
         ? allDocs.filter(d => documentIds.includes(d.id))
         : allDocs;
@@ -223,7 +227,7 @@ async function startServer() {
         Boolean(allowSearchGrounding)
       );
 
-      docStore.addAnswer(userId, answer);
+      await docStore.addAnswer(userId, answer);
 
       res.json({ success: true, answer });
     } catch (err: any) {
@@ -233,20 +237,20 @@ async function startServer() {
   });
 
   // 4. Compare Two Documents
-  app.post("/api/ai/compare", async (req: Request, res: Response) => {
+  app.post("/api/ai/compare", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { doc1Id, doc2Id } = req.body;
 
-      const doc1 = docStore.getDocument(userId, doc1Id);
-      const doc2 = docStore.getDocument(userId, doc2Id);
+      const doc1 = await docStore.getDocument(userId, doc1Id);
+      const doc2 = await docStore.getDocument(userId, doc2Id);
 
       if (!doc1 || !doc2) {
         return res.status(400).json({ error: "Both documents must exist for comparison." });
       }
 
       const comparison = await compareDocumentsWithGemini(doc1, doc2);
-      docStore.setComparison(userId, comparison);
+      await docStore.setComparison(userId, comparison);
 
       res.json({ success: true, comparison });
     } catch (err: any) {
@@ -256,12 +260,12 @@ async function startServer() {
   });
 
   // 5. Generate Actionable Outputs (Consultation Brief, Checklist, Targeted Questions)
-  app.post("/api/ai/actionable-outputs", async (req: Request, res: Response) => {
+  app.post("/api/ai/actionable-outputs", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = getUserId(req);
+      const userId = req.user!.uid;
       const { userConcern, documentIds } = req.body;
 
-      const allDocs = docStore.getDocuments(userId);
+      const allDocs = await docStore.getDocuments(userId);
       const targetDocs = documentIds && documentIds.length > 0
         ? allDocs.filter(d => documentIds.includes(d.id))
         : allDocs;
@@ -271,7 +275,7 @@ async function startServer() {
       }
 
       const outputs = await generateActionableOutputsWithGemini(userConcern || "", targetDocs);
-      docStore.setActionableOutputs(userId, outputs);
+      await docStore.setActionableOutputs(userId, outputs);
 
       res.json({ success: true, outputs });
     } catch (err: any) {
