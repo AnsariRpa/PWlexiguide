@@ -1,0 +1,8 @@
+{
+  "name": "LexiGuide",
+  "description": "AI-powered legal understanding and assistance workspace transforming complex documents into evidence-backed, personalized insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
