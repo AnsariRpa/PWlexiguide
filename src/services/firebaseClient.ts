@@ -8,14 +8,35 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import firebaseConfig from "../../firebase-applet-config.json";
 
-// Initialize Firebase client configuration with env var support
+// Helper to determine if an env var is a genuine value rather than a placeholder/dummy name
+function getEffectiveConfigValue(envVal: string | undefined, defaultVal: string | undefined): string {
+  if (
+    typeof envVal === "string" &&
+    envVal.trim().length > 0 &&
+    !envVal.startsWith("firebaseConfig.") &&
+    !envVal.startsWith("YOUR_") &&
+    !envVal.endsWith(".ts") &&
+    !envVal.endsWith(".js")
+  ) {
+    return envVal.trim();
+  }
+  return defaultVal || "";
+}
+
+// Ensure API key starts with valid Google API key prefix "AIza" if provided via env, otherwise fallback to firebaseConfig
+const rawEnvApiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+const effectiveApiKey = (typeof rawEnvApiKey === "string" && rawEnvApiKey.startsWith("AIza"))
+  ? rawEnvApiKey
+  : ((firebaseConfig as any)?.apiKey || "");
+
+// Initialize Firebase client configuration using firebase-applet-config.json as primary source of truth
 const activeFirebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || (firebaseConfig as any)?.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (firebaseConfig as any)?.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || (firebaseConfig as any)?.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (firebaseConfig as any)?.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || (firebaseConfig as any)?.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || (firebaseConfig as any)?.appId,
+  apiKey: effectiveApiKey,
+  authDomain: getEffectiveConfigValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, (firebaseConfig as any)?.authDomain),
+  projectId: getEffectiveConfigValue(import.meta.env.VITE_FIREBASE_PROJECT_ID, (firebaseConfig as any)?.projectId),
+  storageBucket: getEffectiveConfigValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, (firebaseConfig as any)?.storageBucket),
+  messagingSenderId: getEffectiveConfigValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, (firebaseConfig as any)?.messagingSenderId),
+  appId: getEffectiveConfigValue(import.meta.env.VITE_FIREBASE_APP_ID, (firebaseConfig as any)?.appId),
 };
 
 // Initialize Firebase client instance
@@ -28,9 +49,9 @@ googleProvider.setCustomParameters({
 });
 
 // Initialize client Firestore (passing named databaseId if configured)
-const dbId = import.meta.env.VITE_FIREBASE_DATABASE_ID || (firebaseConfig as any)?.firestoreDatabaseId;
-export const db = dbId && dbId !== "(default)"
-  ? getFirestore(app, dbId)
+const effectiveDbId = getEffectiveConfigValue(import.meta.env.VITE_FIREBASE_DATABASE_ID, (firebaseConfig as any)?.firestoreDatabaseId);
+export const db = effectiveDbId && effectiveDbId !== "(default)"
+  ? getFirestore(app, effectiveDbId)
   : getFirestore(app);
 
 // Connection test helper according to skill requirement
