@@ -73,6 +73,10 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                 Evidence-First Legal AI
               </span>
+              <span className="hidden sm:inline-flex items-center space-x-1.5 text-[10px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30" title="High-precision grounded legal intelligence engine active without billing requirements">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Free Tier Mode</span>
+              </span>
             </div>
             <p className="text-xs text-slate-400">Transforming complex legal texts into verified, actionable understanding</p>
           </div>

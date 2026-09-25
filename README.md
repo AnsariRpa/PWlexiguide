@@ -63,8 +63,9 @@ Users can also upload custom PDF documents or paste plain text agreements direct
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- Gemini API Key ([Get an API Key](https://aistudio.google.com/))
+- Node.js 18+ (or Node.js 20+)
+- Gemini API Key ([Google AI Studio](https://aistudio.google.com/))
+- Firebase Project with Google Authentication & Cloud Firestore (optional for local guest testing; full persistence when configured)
 
 ### Installation
 
@@ -77,12 +78,80 @@ cd lexiguide
 npm install
 ```
 
-### Environment Configuration
+### Environment & Firebase Configuration
 
-Create a `.env` file in the root directory:
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
 
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
+2. Configure your environment variables in `.env`:
+   ```env
+   # Required for Gemini AI document analysis and extraction
+   GEMINI_API_KEY=your_gemini_api_key_here
+
+   # Optional: Session signing secret for demo/guest token HMAC verification
+   SESSION_SECRET=your_secure_random_salt_here
+
+   # Optional client-side Firebase configuration (or configure via firebase-applet-config.json)
+   VITE_FIREBASE_API_KEY=AIzaSy...
+   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your-project-id
+   VITE_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+   VITE_FIREBASE_MESSAGING_SENDER_ID=1234567890
+   VITE_FIREBASE_APP_ID=1:1234567890:web:abcdef
+   VITE_FIREBASE_DATABASE_ID=your-firestore-database-id
+   ```
+
+3. **Firebase Applet Configuration File** (Optional):  
+   You can also place `firebase-applet-config.json` in the project root based on `firebase-applet-config.example.json`:
+   ```json
+   {
+     "projectId": "your-firebase-project-id",
+     "appId": "1:...",
+     "apiKey": "AIzaSy...",
+     "authDomain": "your-project.firebaseapp.com",
+     "firestoreDatabaseId": "your-firestore-database-id",
+     "storageBucket": "your-project.firebasestorage.app",
+     "messagingSenderId": "...",
+     "measurementId": "",
+     "oAuthClientId": "..."
+   }
+   ```
+   *(Note: `firebase-applet-config.json` is gitignored to protect sensitive deployment tokens).*
+
+### Firestore Security Rules
+
+To ensure strict zero-trust isolation between users, deploy the security rules defined in `firestore.rules`:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /documents/{documentId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /relevanceMap/{mapId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /answers/{answerId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /comparison/{comparisonId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /actionableOutputs/{outputId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
 ```
 
 ### Development Mode
@@ -90,9 +159,9 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ```bash
 npm run dev
 ```
-The app runs on `http://localhost:3000`.
+The application will start on `http://localhost:3000`.
 
-### Production Build
+### Production Build & Run
 
 ```bash
 npm run build
@@ -103,11 +172,15 @@ npm start
 
 ## 🛠️ Architecture & Tech Stack
 
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons, Framer Motion
-- **Backend**: Express.js (serving API endpoints and Vite in development)
-- **AI / LLM Engine**: `@google/genai` TypeScript SDK (Gemini 2.5 Flash)
+- **Frontend**: React 19, TypeScript, Tailwind CSS v4, Lucide Icons, Motion
+- **Backend API Server**: Node.js & Express.js (serving API endpoints and hosting Vite SPA middlewares)
+- **Authentication**:
+  - Google Identity Sign-In via Firebase Auth
+  - Ephemeral HMAC-signed Demo/Guest workspace tokens for instant sandbox evaluation
+  - Strict server-side verification using Firebase Admin SDK (`verifyIdToken`)
+- **Database & Persistence**: Google Cloud Firestore with zero-trust multi-user collection paths (`users/{uid}/documents/*`, `users/{uid}/answers/*`, etc.) with in-memory store fallback
+- **AI / LLM Engine**: `@google/genai` TypeScript SDK (Gemini 2.5 Flash) with server-side key isolation and prompt-injection defense boundaries
 - **Document Ingestion**: Custom semantic chunking pipeline with page, section, and line range tracking; `pdf-parse` for PDF processing
-- **Storage**: Multi-user session document store with sample bundles and user-isolated working states
 
 ---
 

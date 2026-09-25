@@ -28,6 +28,8 @@ interface AskLexiGuideViewProps {
   onOpenEvidence: (chunkId: string, citationText?: string) => void;
   isAsking: boolean;
   sampleQuestions?: string[];
+  error?: string | null;
+  onDismissError?: () => void;
 }
 
 export const AskLexiGuideView: React.FC<AskLexiGuideViewProps> = ({
@@ -36,7 +38,9 @@ export const AskLexiGuideView: React.FC<AskLexiGuideViewProps> = ({
   onAskQuestion,
   onOpenEvidence,
   isAsking,
-  sampleQuestions = []
+  sampleQuestions = [],
+  error,
+  onDismissError
 }) => {
   const [questionInput, setQuestionInput] = useState('');
   const [allowSearchGrounding, setAllowSearchGrounding] = useState(false);
@@ -177,6 +181,31 @@ export const AskLexiGuideView: React.FC<AskLexiGuideViewProps> = ({
             </div>
           </div>
         </form>
+
+        {/* Actionable Error Banner */}
+        {error && (
+          <div className="mt-4 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs flex items-start justify-between gap-3 animate-in fade-in duration-200">
+            <div className="flex items-start space-x-2.5">
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-rose-900 dark:text-rose-200 block">
+                  AI Generation Alert
+                </span>
+                <p className="text-rose-700 dark:text-rose-300 mt-0.5 leading-relaxed">
+                  {error}
+                </p>
+              </div>
+            </div>
+            {onDismissError && (
+              <button
+                onClick={onDismissError}
+                className="text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 font-semibold text-[11px] px-2 py-1 rounded"
+              >
+                Dismiss
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Answers Stream */}

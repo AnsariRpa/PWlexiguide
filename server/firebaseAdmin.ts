@@ -13,10 +13,13 @@ let adminApp: App | null = null;
 let firestoreDb: Firestore | null = null;
 let authAdmin: Auth | null = null;
 
+const DEFAULT_PROJECT_ID = "symmetric-scholar-xcjpc";
+const DEFAULT_DATABASE_ID = "ai-studio-lexiguide-e69b607a-ac07-4d3f-984c-1cff1514a0c8";
+
 export function getFirebaseAdmin(): { app: App; db: Firestore; auth: Auth } {
   if (!adminApp) {
-    let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
-    let databaseId: string | undefined = undefined;
+    let projectId = process.env.FIREBASE_PROJECT_ID || DEFAULT_PROJECT_ID;
+    let databaseId: string | undefined = process.env.VITE_FIREBASE_DATABASE_ID || DEFAULT_DATABASE_ID;
 
     try {
       const configPath = path.join(process.cwd(), "firebase-applet-config.json");
@@ -34,7 +37,7 @@ export function getFirebaseAdmin(): { app: App; db: Firestore; auth: Auth } {
       adminApp = apps[0];
     } else {
       adminApp = initializeApp({
-        projectId: projectId || "symmetric-scholar-xcjpc"
+        projectId
       });
     }
 

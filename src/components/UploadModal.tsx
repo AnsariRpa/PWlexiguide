@@ -32,16 +32,44 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
 
   if (!isOpen) return null;
 
+  const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15MB
+
+  const validateAndSetFile = (file: File) => {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setErrorMessage(
+        `File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum allowed size is 15 MB. Please upload a smaller document or paste text directly.`
+      );
+      setSelectedFile(null);
+      return false;
+    }
+
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isText = file.type.startsWith('text/') || /\.(txt|md|text|json|csv)$/i.test(file.name);
+
+    if (!isPdf && !isText) {
+      if (/\.(docx?|rtf|odt|pages)$/i.test(file.name)) {
+        setErrorMessage(
+          `Word documents (.docx / .doc) cannot be processed directly as raw binaries. Please export or save as PDF, or copy and paste the text into the "Paste Contract Text" tab.`
+        );
+      } else {
+        setErrorMessage('Unsupported file format. Please upload a PDF or text file (.pdf, .txt, .md).');
+      }
+      setSelectedFile(null);
+      return false;
+    }
+
+    setSelectedFile(file);
+    if (!title) {
+      const cleanName = file.name.replace(/\.[^/.]+$/, '');
+      setTitle(cleanName);
+    }
+    setErrorMessage(null);
+    return true;
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      if (!title) {
-        // Strip extension
-        const cleanName = file.name.replace(/\.[^/.]+$/, '');
-        setTitle(cleanName);
-      }
-      setErrorMessage(null);
+      validateAndSetFile(e.target.files[0]);
     }
   };
 
@@ -49,12 +77,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
     e.preventDefault();
     setDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      setSelectedFile(file);
-      if (!title) {
-        setTitle(file.name.replace(/\.[^/.]+$/, ''));
-      }
-      setErrorMessage(null);
+      validateAndSetFile(e.dataTransfer.files[0]);
     }
   };
 

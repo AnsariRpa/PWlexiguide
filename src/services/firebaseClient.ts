@@ -6,7 +6,9 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
-import firebaseConfig from "../../firebase-applet-config.json";
+import { defaultFirebaseConfig } from "./firebaseConfigDefault";
+
+const firebaseConfig = defaultFirebaseConfig;
 
 // Helper to determine if an env var is a genuine value rather than a placeholder/dummy name
 function getEffectiveConfigValue(envVal: string | undefined, defaultVal: string | undefined): string {

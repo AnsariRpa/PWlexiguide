@@ -64,6 +64,7 @@ export function App() {
   const [isAnalyzingDoc, setIsAnalyzingDoc] = useState(false);
   const [isAnalyzingRelevance, setIsAnalyzingRelevance] = useState(false);
   const [isAsking, setIsAsking] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
   const [isComparing, setIsComparing] = useState(false);
   const [isGeneratingOutputs, setIsGeneratingOutputs] = useState(false);
 
@@ -104,6 +105,29 @@ export function App() {
       }
     } catch (err: any) {
       console.error("Error loading documents:", err);
+      const isAuthError =
+        err.message?.includes("Invalid or expired authentication session") ||
+        err.message?.includes("expired") ||
+        err.message?.includes("Please sign in again");
+
+      if (isAuthError && user?.isDemo) {
+        // Automatically refresh stale guest session seamlessly
+        try {
+          await continueAsGuest();
+          const refreshedDocs = await LexiGuideApi.fetchDocuments();
+          if (refreshedDocs.length === 0 && loadSampleIfEmpty) {
+            const bundled = await LexiGuideApi.loadSampleBundle('bundle-employment-equity');
+            setDocuments(bundled);
+            if (bundled.length > 0) setActiveDocumentId(bundled[0].id);
+          } else {
+            setDocuments(refreshedDocs);
+            if (refreshedDocs.length > 0) setActiveDocumentId(refreshedDocs[0].id);
+          }
+          return;
+        } catch (refreshErr) {
+          console.warn("Guest auto-refresh note:", refreshErr);
+        }
+      }
       showToast(err.message || "Failed to load documents", 'error');
     } finally {
       setIsLoadingDocs(false);
@@ -191,6 +215,7 @@ export function App() {
 
   const handleAskQuestion = async (question: string, allowSearchGrounding: boolean) => {
     setIsAsking(true);
+    setAskError(null);
     try {
       const answer = await LexiGuideApi.askEvidenceBackedQuestion(
         question,
@@ -201,7 +226,9 @@ export function App() {
       setAnswers(prev => [answer, ...prev]);
       showToast("Answer synthesized with document citations");
     } catch (err: any) {
-      showToast(err.message || "Failed to answer question", 'error');
+      const msg = err.message || "Failed to answer question";
+      setAskError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsAsking(false);
     }
@@ -326,6 +353,8 @@ export function App() {
             onAskQuestion={handleAskQuestion}
             onOpenEvidence={handleOpenEvidence}
             isAsking={isAsking}
+            error={askError}
+            onDismissError={() => setAskError(null)}
           />
         )}
 

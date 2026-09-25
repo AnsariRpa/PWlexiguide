@@ -34,11 +34,50 @@ export class LexiGuideApi {
     return headers;
   }
 
+  /**
+   * Robust response handler preventing "Unexpected token '<', <!doctype..." syntax errors
+   * when Cloud Run or Express returns an HTML error page (413, 404, 502, etc.).
+   */
+  private static async handleResponse<T>(res: Response, fallbackError: string): Promise<T> {
+    const contentType = res.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error('Invalid JSON received from server.');
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.error || `${fallbackError} (status ${res.status})`);
+      }
+      return data as T;
+    }
+
+    // Response is not JSON (HTML, plain text, or empty)
+    const textBody = await res.text().catch(() => '');
+
+    if (res.status === 413 || textBody.toLowerCase().includes('payload too large') || textBody.toLowerCase().includes('entity too large')) {
+      throw new Error('The document is too large to process. Please upload a file under 15MB or paste text directly.');
+    }
+    if (res.status === 401) {
+      throw new Error('Your session has expired. Please refresh the page or sign in again.');
+    }
+    if (res.status === 404) {
+      throw new Error('API service endpoint not found. Please refresh the page.');
+    }
+    if (res.status >= 500) {
+      throw new Error('Server encountered a temporary issue. Please try again in a few moments.');
+    }
+
+    throw new Error(`${fallbackError} (HTTP ${res.status}: ${res.statusText || 'Unexpected response'})`);
+  }
+
   public static async fetchDocuments(): Promise<DocumentItem[]> {
     const headers = await this.getHeaders();
     const res = await fetch(`/api/documents`, { headers });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to fetch documents');
+    const data = await this.handleResponse<{ documents: DocumentItem[] }>(res, 'Failed to fetch documents');
     return data.documents || [];
   }
 
@@ -55,8 +94,7 @@ export class LexiGuideApi {
       headers,
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to upload document');
+    const data = await this.handleResponse<{ document: DocumentItem }>(res, 'Failed to upload document');
     return data.document;
   }
 
@@ -67,8 +105,7 @@ export class LexiGuideApi {
       headers,
       body: JSON.stringify({ bundleId })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to load sample bundle');
+    const data = await this.handleResponse<{ documents: DocumentItem[] }>(res, 'Failed to load sample bundle');
     return data.documents || [];
   }
 
@@ -78,8 +115,7 @@ export class LexiGuideApi {
       method: 'DELETE',
       headers
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to delete document');
+    await this.handleResponse<{ success: boolean }>(res, 'Failed to delete document');
   }
 
   public static async clearAllDocuments(): Promise<void> {
@@ -88,8 +124,7 @@ export class LexiGuideApi {
       method: 'POST',
       headers
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to clear documents');
+    await this.handleResponse<{ success: boolean }>(res, 'Failed to clear documents');
   }
 
   public static async analyzeDocument(documentId: string): Promise<DocumentUnderstandingSummary> {
@@ -99,8 +134,7 @@ export class LexiGuideApi {
       headers,
       body: JSON.stringify({ documentId })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to analyze document');
+    const data = await this.handleResponse<{ summary: DocumentUnderstandingSummary }>(res, 'Failed to analyze document');
     return data.summary;
   }
 
@@ -114,8 +148,7 @@ export class LexiGuideApi {
       headers,
       body: JSON.stringify({ concernPrompt, documentIds })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to analyze personalized relevance');
+    const data = await this.handleResponse<{ relevanceMap: PersonalizedRelevanceMap }>(res, 'Failed to analyze personalized relevance');
     return data.relevanceMap;
   }
 
@@ -136,8 +169,7 @@ export class LexiGuideApi {
         allowSearchGrounding
       })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to answer question');
+    const data = await this.handleResponse<{ answer: EvidenceBackedAnswer }>(res, 'Failed to answer question');
     return data.answer;
   }
 
@@ -151,8 +183,7 @@ export class LexiGuideApi {
       headers,
       body: JSON.stringify({ doc1Id, doc2Id })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to compare documents');
+    const data = await this.handleResponse<{ comparison: DocumentComparisonResult }>(res, 'Failed to compare documents');
     return data.comparison;
   }
 
@@ -166,8 +197,7 @@ export class LexiGuideApi {
       headers,
       body: JSON.stringify({ userConcern, documentIds })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to generate actionable outputs');
+    const data = await this.handleResponse<{ outputs: ActionableOutputs }>(res, 'Failed to generate actionable outputs');
     return data.outputs;
   }
 }

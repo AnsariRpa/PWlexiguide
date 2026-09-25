@@ -66,7 +66,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error("Failed to get current ID token:", e);
         }
       }
-      return demoToken || savedDemoToken || null;
+      if (demoToken) return demoToken;
+      try {
+        const stored = localStorage.getItem(DEMO_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.token) return parsed.token;
+        }
+      } catch {
+        // ignore storage read issues
+      }
+      return savedDemoToken || null;
     });
 
     // Listen to Firebase token and user changes
