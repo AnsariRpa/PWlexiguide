@@ -83,7 +83,12 @@ export const EvidenceInspectorModal: React.FC<EvidenceInspectorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="evidence-inspector-title"
+      className="fixed inset-0 z-50 flex items-center justify-end p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs"
+    >
       <div className="bg-white dark:bg-slate-900 border-l sm:border border-slate-200 dark:border-slate-800 sm:rounded-2xl max-w-2xl w-full h-full sm:h-[90vh] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/60 dark:bg-slate-800/40">
@@ -93,7 +98,7 @@ export const EvidenceInspectorModal: React.FC<EvidenceInspectorModalProps> = ({
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                <h3 id="evidence-inspector-title" className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   Verifiable Evidence Inspector
                 </h3>
                 <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -109,6 +114,7 @@ export const EvidenceInspectorModal: React.FC<EvidenceInspectorModalProps> = ({
           <div className="flex items-center space-x-2">
             <button
               onClick={handleCopySnippet}
+              aria-label="Copy verbatim clause snippet to clipboard"
               className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
               title="Copy verbatim clause"
             >
@@ -118,6 +124,7 @@ export const EvidenceInspectorModal: React.FC<EvidenceInspectorModalProps> = ({
 
             <button
               onClick={onClose}
+              aria-label="Close evidence inspector"
               className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <X className="w-5 h-5" />

@@ -125,11 +125,13 @@ ${b.actionItems?.map((a, i) => `${i + 1}. ${a}`).join('\n')}
 
         {/* Optional Custom Concern */}
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+          <label htmlFor="input-brief-focus-scenario" className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
             Focus Brief On Specific Scenario (Optional):
           </label>
           <input
+            id="input-brief-focus-scenario"
             type="text"
+            aria-label="Focus brief on specific scenario"
             value={customConcern}
             onChange={(e) => setCustomConcern(e.target.value)}
             placeholder="e.g. Focus on IP ownership and post-employment covenants, or deposit refund timeline"

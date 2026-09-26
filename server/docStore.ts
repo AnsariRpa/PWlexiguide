@@ -21,6 +21,7 @@ interface MemoryUserData {
   relevanceMap?: PersonalizedRelevanceMap;
   comparison?: DocumentComparisonResult;
   actionableOutputs?: ActionableOutputs;
+  lastAccessed: number;
 }
 
 /**
@@ -32,9 +33,13 @@ interface MemoryUserData {
  * users/{uid}/answers/{answerId}
  * users/{uid}/comparison/current
  * users/{uid}/actionableOutputs/current
+ *
+ * Includes LRU eviction to bound memory growth for high concurrent evaluation.
  */
 class FirestoreDocumentStore {
   private fallbackMemoryStores: Map<string, MemoryUserData> = new Map();
+  private readonly MAX_ACTIVE_USERS = 250;
+  private readonly USER_STORE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
   private getDb() {
     try {
@@ -45,15 +50,39 @@ class FirestoreDocumentStore {
     }
   }
 
+  private cleanStaleMemoryStores() {
+    const now = Date.now();
+    for (const [userId, store] of this.fallbackMemoryStores.entries()) {
+      if (now - store.lastAccessed > this.USER_STORE_TTL_MS) {
+        this.fallbackMemoryStores.delete(userId);
+      }
+    }
+
+    // Evict oldest if beyond maximum capacity
+    if (this.fallbackMemoryStores.size > this.MAX_ACTIVE_USERS) {
+      const oldest = Array.from(this.fallbackMemoryStores.entries()).sort(
+        (a, b) => a[1].lastAccessed - b[1].lastAccessed
+      );
+      const toRemove = oldest.slice(0, 50);
+      for (const [uid] of toRemove) {
+        this.fallbackMemoryStores.delete(uid);
+      }
+    }
+  }
+
   private getMemoryStore(userId: string): MemoryUserData {
     if (!this.fallbackMemoryStores.has(userId)) {
+      this.cleanStaleMemoryStores();
       this.fallbackMemoryStores.set(userId, {
         documents: new Map(),
-        answers: []
+        answers: [],
+        lastAccessed: Date.now()
       });
     }
 
-    return this.fallbackMemoryStores.get(userId)!;
+    const store = this.fallbackMemoryStores.get(userId)!;
+    store.lastAccessed = Date.now();
+    return store;
   }
 
   // --- Document Operations ---

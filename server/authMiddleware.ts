@@ -38,6 +38,9 @@ export function verifyDemoToken(token: string): { uid: string; name: string } | 
   const [, payload, signature] = parts;
   try {
     const expectedSig = crypto.createHmac("sha256", DEMO_SECRET).update(payload).digest("base64url");
+    if (signature !== expectedSig) {
+      return null;
+    }
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8"));
     if (data && typeof data.uid === "string") {
       // Return authenticated demo user identity

@@ -123,6 +123,7 @@ export const AskLexiGuideView: React.FC<AskLexiGuideViewProps> = ({
             <input
               id="input-legal-question"
               type="text"
+              aria-label="Ask a question about your documents"
               value={questionInput}
               onChange={(e) => setQuestionInput(e.target.value)}
               placeholder="Ask a question about your documents (e.g., 'What happens to my unvested equity upon departure?')"
@@ -132,6 +133,7 @@ export const AskLexiGuideView: React.FC<AskLexiGuideViewProps> = ({
             <button
               id="btn-submit-legal-question"
               type="submit"
+              aria-label="Submit legal inquiry"
               disabled={isAsking || !questionInput.trim() || documents.length === 0}
               className="absolute right-2 top-2 bottom-2 inline-flex items-center space-x-1.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-semibold shadow transition-all disabled:opacity-50"
             >

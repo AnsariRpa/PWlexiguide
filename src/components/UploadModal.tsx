@@ -161,7 +161,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="upload-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs"
+    >
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -170,12 +175,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
               <Upload className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Add Legal Document</h3>
+              <h3 id="upload-modal-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">Add Legal Document</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">PDF, TXT, or markdown legal contracts and agreements</p>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="Close upload dialog"
             className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -183,8 +189,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
         </div>
 
         {/* Tab switch */}
-        <div className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-6 pt-2">
+        <div role="tablist" aria-label="Upload method" className="flex border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 px-6 pt-2">
           <button
+            role="tab"
+            aria-selected={activeTab === 'file'}
             onClick={() => setActiveTab('file')}
             className={`pb-2 px-3 text-xs font-medium border-b-2 transition-colors ${
               activeTab === 'file'
@@ -195,6 +203,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
             Upload File (PDF / TXT)
           </button>
           <button
+            role="tab"
+            aria-selected={activeTab === 'text'}
             onClick={() => setActiveTab('text')}
             className={`pb-2 px-3 text-xs font-medium border-b-2 transition-colors ${
               activeTab === 'text'
@@ -208,17 +218,18 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {errorMessage && (
-            <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 text-xs flex items-start space-x-2">
+            <div role="alert" className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 text-xs flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="input-doc-title" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               Document Title *
             </label>
             <input
+              id="input-doc-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -229,10 +240,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label htmlFor="select-doc-category" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
               Legal Category
             </label>
             <select
+              id="select-doc-category"
               value={category}
               onChange={(e) => setCategory(e.target.value as DocumentCategory)}
               className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -248,21 +260,31 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
 
           {activeTab === 'file' ? (
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="file-input-upload" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Select or Drop File
               </label>
               <div
+                tabIndex={0}
+                role="button"
+                aria-label="Upload file area: click or drag and drop a PDF or TXT document"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                   dragOver
                     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20'
                     : 'border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                 }`}
               >
                 <input
+                  id="file-input-upload"
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileChange}
@@ -288,10 +310,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onUpl
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label htmlFor="textarea-contract-text" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Contract Text Content *
               </label>
               <textarea
+                id="textarea-contract-text"
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
                 placeholder="Paste the full text of the agreement here. Tip: Include markers like '--- Page 1 ---' or 'Section X' to enrich chunk citation metadata."

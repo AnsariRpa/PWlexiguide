@@ -115,6 +115,7 @@ export const PersonalizedRelevanceView: React.FC<PersonalizedRelevanceViewProps>
           <div className="relative">
             <textarea
               id="input-personal-concern"
+              aria-label="What matters most to you in these legal documents"
               value={concernInput}
               onChange={(e) => setConcernInput(e.target.value)}
               placeholder="What matters most to you? (e.g. 'What happens to my stock options and severance if I resign?', 'Can I code side projects on weekends?', 'What are my repair responsibilities?')"
@@ -124,6 +125,7 @@ export const PersonalizedRelevanceView: React.FC<PersonalizedRelevanceViewProps>
             <button
               id="btn-analyze-relevance"
               type="submit"
+              aria-label="Map personal relevance across documents"
               disabled={isAnalyzing || !concernInput.trim() || documents.length === 0}
               className="absolute right-3 bottom-3 inline-flex items-center space-x-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white text-xs font-semibold shadow transition-all disabled:opacity-50"
             >
